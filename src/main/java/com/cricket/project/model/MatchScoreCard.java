@@ -1,15 +1,16 @@
 package com.cricket.project.model;
 
+import lombok.Data;
+
+@Data
 public class MatchScoreCard {
-    private String matchId;
+    private int matchId;
     private String winner;
     private int team1Runs;
     private int team1Wickets;
     private int team2Runs;
     private int team2Wickets;
-    private enum matchType{
-        testCricket,oneDayCricket,twenty20
-    }
     private int totalOvers;
+    private String bestPartnerShipInWinningTeam;
     private int winningTeamWonBy;
 }
