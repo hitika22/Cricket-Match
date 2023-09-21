@@ -2,11 +2,12 @@ package com.cricket.project.service.impl.MatchHelper;
 
 import com.cricket.project.dto.MatchDto;
 import com.cricket.project.model.Match;
-import org.springframework.data.mongodb.core.aggregation.ConditionalOperators;
+import org.springframework.stereotype.Component;
 
 import java.util.Date;
 import java.util.Random;
 
+@Component
 public class MatchUtilities {
     public Match Toss(MatchDto document){
         Random random = new Random();
