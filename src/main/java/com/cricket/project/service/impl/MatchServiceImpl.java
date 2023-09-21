@@ -10,12 +10,15 @@ import com.cricket.project.repository.BallRepository;
 import com.cricket.project.repository.PlayerRepository;
 import com.cricket.project.repository.TeamRepository;
 import com.cricket.project.service.MatchService;
+import com.cricket.project.service.impl.MatchHelper.MatchUtilities;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 @Service
 @Data
@@ -36,48 +39,10 @@ public class MatchServiceImpl implements MatchService {
     public Match setUpMatch(MatchDto document) {
         targetRuns=0;
         chaseRuns=0;
-        String matchVenue = document.getMatchVenue();
-        int overs = document.getOvers();
-        Date date = new Date();
-        String team1Name = teamRepository.findTeamById(document.getTeam1Id()).getTeamName();
-        String team2Name = teamRepository.findTeamById(document.getTeam2Id()).getTeamName();
-        Match match = new Match();
-        match.setMatchVenue(matchVenue);
-        match.setOvers(overs);
-        match.setDate(date);
-        match.setTeam1Id(document.getTeam1Id());
-        match.setTeam2Id(document.getTeam2Id());
-        Random random = new Random();
-        int toss = random.nextInt(2);
-        if (toss == 0) {
-            int batOrBall = random.nextInt(2);
-            if (batOrBall == 0) {
-                System.out.println("Team with Id " + document.getTeam1Id() + "won the toss and chooses to bat first!!");
-                match.setTossWinningTeam(team1Name);
-                match.setTossWinningTeamId(document.getTeam1Id());
-                match.setBattingFirstTeamId(document.getTeam1Id());
-            } else {
-                System.out.println("Team with Id " + document.getTeam1Id() + "won the toss and chooses to ball first!!");
-                match.setTossWinningTeam(team1Name);
-                match.setTossWinningTeamId(document.getTeam1Id());
-                match.setBattingFirstTeamId(document.getTeam2Id());
-            }
 
-        } else {
-            int batOrBall = random.nextInt(2);
-            if (batOrBall == 0) {
-                System.out.println("Team with Id " + document.getTeam2Id() + "won the toss and chooses to bat first!!");
-                match.setTossWinningTeam(team2Name);
-                match.setTossWinningTeamId(document.getTeam2Id());
-                match.setBattingFirstTeamId(document.getTeam2Id());
-            } else {
-                System.out.println("Team with Id " + document.getTeam2Id() + "won the toss and chooses to ball first!!");
-                match.setTossWinningTeam(team2Name);
-                match.setTossWinningTeamId(document.getTeam2Id());
-                match.setBattingFirstTeamId(document.getTeam1Id());
-            }
+        MatchUtilities matchUtilities=new MatchUtilities();
+        Match match=matchUtilities.Toss(document);
 
-        }
         playMatch(match);
 
         return match;
@@ -89,17 +54,16 @@ public class MatchServiceImpl implements MatchService {
         playInning(match, 1);
         System.out.println("target: "+ targetRuns+" and chase: "+chaseRuns);
     }
-
     public void playInning(Match match,int inningNumber){
 
-        if(inningNumber==0){ //first Inning
+            if(inningNumber==0){ //first Inning
 
-            List<Player> battingOrder= new ArrayList<>();
-            List<Player> bowlingOrder= new ArrayList<>();
-            int wickets=0;
+                List<Player> battingOrder= new ArrayList<>();
+                List<Player> bowlingOrder= new ArrayList<>();
+                int wickets=0;
 
-            Team battingTeam = teamRepository.findTeamById(match.getBattingFirstTeamId());
-            List<Integer> battingTeamPlayers = battingTeam.getTeamPlayersId();
+                Team battingTeam = teamRepository.findTeamById(match.getBattingFirstTeamId());
+                List<Integer> battingTeamPlayers = battingTeam.getTeamPlayersId();
 
             Team bowlingTeam;
             List<Integer> bowlingTeamPlayers;
