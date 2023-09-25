@@ -1,23 +1,19 @@
 package com.cricket.project.service.impl;
 
 import com.cricket.project.dto.MatchDto;
-import com.cricket.project.enums.PlayerType;
-import com.cricket.project.model.Ball;
-import com.cricket.project.model.Match;
-import com.cricket.project.model.Player;
-import com.cricket.project.model.Team;
+import com.cricket.project.model.*;
 import com.cricket.project.repository.BallRepository;
 import com.cricket.project.repository.PlayerRepository;
 import com.cricket.project.repository.TeamRepository;
 import com.cricket.project.service.MatchService;
-import com.cricket.project.service.impl.MatchHelper.MatchUtilities;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 @Service
@@ -32,249 +28,150 @@ public class MatchServiceImpl implements MatchService {
     private PlayerRepository playerRepository;
     @Autowired
     private BallRepository ballRepository;
-    int targetRuns;
-    int chaseRuns;
+    @Autowired
+    private InningServiceImpl inningService;
 
     @Override
     public Match setUpMatch(MatchDto document) {
-        targetRuns=0;
-        chaseRuns=0;
-
-        MatchUtilities matchUtilities=new MatchUtilities();
-        Match match=matchUtilities.Toss(document);
-
+        Match match = Toss(document);
         playMatch(match);
-
         return match;
     }
 
+    public Match Toss(MatchDto document) {
+        Random random = new Random();
+        int toss = random.nextInt(4);
+        int tossWinningTeamId = 0;
+        int battingFirstTeamId = 0;
+        switch (toss) {
+            case 0:
+                tossWinningTeamId = document.getTeam1Id();
+                battingFirstTeamId = document.getTeam1Id();
+                break;
+            case 1:
+                tossWinningTeamId = document.getTeam1Id();
+                battingFirstTeamId = document.getTeam2Id();
+                break;
+            case 2:
+                tossWinningTeamId = document.getTeam2Id();
+                battingFirstTeamId = document.getTeam1Id();
+                break;
+            case 3:
+                tossWinningTeamId = document.getTeam2Id();
+                battingFirstTeamId = document.getTeam2Id();
+                break;
+        }
+        return Match.builder()
+                .id(document.getId())
+                .date(new Date())
+                .team1Id(document.getTeam1Id())
+                .team2Id(document.getTeam2Id())
+                .matchVenue(document.getMatchVenue())
+                .overs(document.getOvers())
+                .tossWinningTeamId(tossWinningTeamId)
+                .battingFirstTeamId(battingFirstTeamId)
+                .build();
+    }
+
     public void playMatch(Match match) {
-        playInning(match, 0);
-        System.out.println("target: "+ targetRuns+" and chase: "+chaseRuns);
-        playInning(match, 1);
-        System.out.println("target: "+ targetRuns+" and chase: "+chaseRuns);
-    }
-    public void playInning(Match match,int inningNumber){
 
-            if(inningNumber==0){ //first Inning
+        InningStats inningStats1;
+        InningStats inningStats2;
+        BatAndBallOrder batAndBallOrder = battingAndBowlingTeamOrder(match);
+        int firstInningScore = inningService.playInning(match, batAndBallOrder.getFirstInningBattingOrder(), batAndBallOrder
+                .getFirstInningBowlingOrder(), batAndBallOrder.getFirstInningBattingTeamId(), 9999);
+        int wickets1 = ballRepository.wickets(match.getId(),batAndBallOrder.getFirstInningBattingTeamId());
 
-                List<Player> battingOrder= new ArrayList<>();
-                List<Player> bowlingOrder= new ArrayList<>();
-                int wickets=0;
+        inningStats1=InningStats.builder()
+                .matchId(match.getId())
+                .battingTeamId(batAndBallOrder.getFirstInningBattingTeamId())
+                .inningNumber(1)
+                .runs(firstInningScore)
+                .wickets(wickets1)
+                .build();
 
-                Team battingTeam = teamRepository.findTeamById(match.getBattingFirstTeamId());
-                List<Integer> battingTeamPlayers = battingTeam.getTeamPlayersId();
+        System.out.println(inningStats1);
 
-            Team bowlingTeam;
-            List<Integer> bowlingTeamPlayers;
+        int secondInningScore = inningService.playInning(match, batAndBallOrder.getSecondInningBattingOrder(), batAndBallOrder
+                .getSecondInningBowlingOrder(), batAndBallOrder.getSecondInningBattingTeamId(), firstInningScore);
+        int wickets2 = ballRepository.wickets(match.getId(),batAndBallOrder.getSecondInningBattingTeamId());
 
-            if(battingTeam.getId() == match.getTeam1Id()) {
-                bowlingTeam=teamRepository.findTeamById(match.getTeam2Id());
-            }
-            else {
-                bowlingTeam=teamRepository.findTeamById(match.getTeam1Id());
-            }
-            bowlingTeamPlayers = bowlingTeam.getTeamPlayersId();
-
-            for(Integer id:battingTeamPlayers)
-            {
-                Player player = playerRepository.findPlayerById(id);
-                if(player.getPlayerType()== PlayerType.batsman){
-                    battingOrder.add(player);
-                }
-            }
-
-            for(Integer id:battingTeamPlayers)
-            {
-                Player player = playerRepository.findPlayerById(id);
-                if(player.getPlayerType()== PlayerType.allRounder){
-                    battingOrder.add(player);
-                }
-            }
-            for(Integer id:battingTeamPlayers)
-            {
-                Player player = playerRepository.findPlayerById(id);
-                if(player.getPlayerType()== PlayerType.bowler){
-                    battingOrder.add(player);
-                }
-            }
-            for(Integer id: bowlingTeamPlayers)
-            {
-                Player player = playerRepository.findPlayerById(id);
-                if(player.getPlayerType()== PlayerType.bowler)
-                {
-                    bowlingOrder.add(player);
-                }
-            }
-
-            for(Player player:battingOrder){
-                player.setTotalMatchesPlayed(player.getTotalMatchesPlayed()+1);
-                playerRepository.savePlayer(player);
-            }
-
-            //
-            Player striker=battingOrder.get(0);
-            Player nonStriker=battingOrder.get(1);
-            Player bowler;
-//
-            for(int i=0;i<match.getOvers();i++){
-                bowler=bowlingOrder.get(i%bowlingOrder.size());
-                for(int j=1;j<=6;j++){
-                    Ball ball=new Ball();
-                    ball.setBallId(i*6+j);
-                    ball.setBowlerId(bowler.getId());
-                    ball.setMatchId(match.getId());
-                    ball.setBattingTeamId(battingTeam.getId());
-                    ball.setStrikerId(striker.getId());
-                    ball.setNonStrikerId(nonStriker.getId());
-
-                    Random random=new Random();
-                    int ballStatus = random.nextInt(8);
-                    if(ballStatus==7){
-                        ball.setWickets(1);
-                        ball.setRuns(0);
-                        ballRepository.save(ball);
-
-                        bowler.setTotalWicketsTaken(bowler.getTotalWicketsTaken()+1);
-                        playerRepository.savePlayer(bowler);
-
-                        wickets++;
-                        if(wickets==10){
-                            System.out.println("wickets: "+wickets);
-                            return;
-                        }
-                        striker=battingOrder.get(wickets+1);
-                    }
-                    else{
-                        ball.setRuns(ballStatus);
-                        striker.setTotalRunScored(striker.getTotalRunScored()+ballStatus);
-                        targetRuns=targetRuns+ballStatus;
-                        playerRepository.savePlayer(striker);
-                        if(ballStatus%2==1){
-                            Player temp=striker;
-                            striker=nonStriker;
-                            nonStriker=temp;
-                        }
-                        ballRepository.save(ball);
-                    }
-                }
-                Player temp=striker;
-                striker=nonStriker;
-                nonStriker=temp;
-            }
-            System.out.println("wickets: "+wickets);
+        inningStats2 = InningStats.builder()
+                .matchId(match.getId())
+                .battingTeamId(batAndBallOrder.getSecondInningBattingTeamId())
+                .inningNumber(2)
+                .runs(secondInningScore)
+                .wickets(wickets2)
+                .build();
+        System.out.println(inningStats2);
+        if(inningStats1.getRuns()>inningStats2.getRuns())
+        {
+            System.out.println("winner "+ inningStats1.getBattingTeamId());
         }
-        else { //second Inning
-
-            List<Player> battingOrder= new ArrayList<>();
-            List<Player> bowlingOrder= new ArrayList<>();
-            int wickets=0;
-
-            Team bowlingTeam = teamRepository.findTeamById(match.getBattingFirstTeamId());
-            List<Integer> battingTeamPlayers = bowlingTeam.getTeamPlayersId();
-
-            Team battingTeam;
-            List<Integer> bowlingTeamPlayers;
-
-            if(bowlingTeam.getId() == match.getTeam1Id()) {
-                battingTeam=teamRepository.findTeamById(match.getTeam2Id());
-            }
-            else {
-                battingTeam=teamRepository.findTeamById(match.getTeam1Id());
-            }
-            bowlingTeamPlayers = bowlingTeam.getTeamPlayersId();
-
-            for(Integer id:battingTeamPlayers)
-            {
-                Player player = playerRepository.findPlayerById(id);
-                if(player.getPlayerType()== PlayerType.batsman){
-                    battingOrder.add(player);
-                }
-            }
-
-            for(Integer id:battingTeamPlayers)
-            {
-                Player player = playerRepository.findPlayerById(id);
-                if(player.getPlayerType()== PlayerType.allRounder){
-                    battingOrder.add(player);
-                }
-            }
-            for(Integer id:battingTeamPlayers)
-            {
-                Player player = playerRepository.findPlayerById(id);
-                if(player.getPlayerType()== PlayerType.bowler){
-                    battingOrder.add(player);
-                }
-            }
-            for(Integer id: bowlingTeamPlayers)
-            {
-                Player player = playerRepository.findPlayerById(id);
-                if(player.getPlayerType()== PlayerType.bowler)
-                {
-                    bowlingOrder.add(player);
-                }
-            }
-
-            for(Player player:battingOrder){
-                player.setTotalMatchesPlayed(player.getTotalMatchesPlayed()+1);
-                playerRepository.savePlayer(player);
-            }
-
-            //
-            Player striker=battingOrder.get(0);
-            Player nonStriker=battingOrder.get(1);
-            Player bowler;
-//
-            for(int i=0;i<match.getOvers();i++){
-                bowler=bowlingOrder.get(i%bowlingOrder.size());
-                for(int j=1;j<=6;j++){
-                    Ball ball=new Ball();
-                    ball.setBallId(i*6+j);
-                    ball.setBowlerId(bowler.getId());
-                    ball.setMatchId(match.getId());
-                    ball.setBattingTeamId(battingTeam.getId());
-                    ball.setStrikerId(striker.getId());
-                    ball.setNonStrikerId(nonStriker.getId());
-
-                    Random random=new Random();
-                    int ballStatus = random.nextInt(8);
-                    if(ballStatus==7){
-                        ball.setWickets(1);
-                        ball.setRuns(0);
-                        ballRepository.save(ball);
-
-                        bowler.setTotalWicketsTaken(bowler.getTotalWicketsTaken()+1);
-                        playerRepository.savePlayer(bowler);
-
-                        wickets++;
-                        if(wickets==10){
-                            System.out.println("wickets: "+wickets);
-                            return;
-                        }
-                        striker=battingOrder.get(wickets+1);
-                    }
-                    else{
-                        ball.setRuns(ballStatus);
-                        striker.setTotalRunScored(striker.getTotalRunScored()+ballStatus);
-                        chaseRuns=chaseRuns+ballStatus;
-                        playerRepository.savePlayer(striker);
-                        if(ballStatus%2==1){
-                            Player temp=striker;
-                            striker=nonStriker;
-                            nonStriker=temp;
-                        }
-                        ballRepository.save(ball);
-                        if(chaseRuns>targetRuns){
-                            System.out.println("wickets: "+wickets);
-                            return;
-                        }
-                    }
-                }
-                Player temp=striker;
-                striker=nonStriker;
-                nonStriker=temp;
-            }
-            System.out.println("wickets: "+wickets);
+        else {
+            System.out.println("winner "+ inningStats2.getBattingTeamId());
         }
     }
+
+    public BatAndBallOrder battingAndBowlingTeamOrder(Match match) {
+        List<Player> firstInningBattingOrder;
+        List<Player> firstInningBowlingOrder;
+        List<Player> secondInningBattingOrder;
+        List<Player> secondInningBowlingOrder;
+
+
+        BattingAndBallingTeam battingAndBallingTeam = decideBatOrBallTeam(match);
+
+        firstInningBattingOrder = orderBuilder(battingAndBallingTeam.getBattingTeamPlayers(), "batting");
+        secondInningBowlingOrder = orderBuilder(battingAndBallingTeam.getBowlingTeamPlayers(), "bowler");
+        firstInningBowlingOrder = orderBuilder(battingAndBallingTeam.getBowlingTeamPlayers(), "bowling");
+        secondInningBattingOrder = orderBuilder(battingAndBallingTeam.getBattingTeamPlayers(), "batting");
+
+        return BatAndBallOrder.builder()
+                .firstInningBattingOrder(firstInningBattingOrder)
+                .firstInningBowlingOrder(firstInningBowlingOrder)
+                .secondInningBattingOrder(secondInningBattingOrder)
+                .secondInningBowlingOrder(secondInningBowlingOrder)
+                .firstInningBattingTeamId(battingAndBallingTeam.getFirstInningBattingTeamId())
+                .secondInningBattingTeamId(battingAndBallingTeam.getSecondInningBattingTeamId())
+                .build();
+    }
+
+    public BattingAndBallingTeam decideBatOrBallTeam(Match match) {
+        int firstInningBattingTeamId;
+        int secondInningBattingTeamId;
+        Team battingTeam = teamRepository.findTeamById(match.getBattingFirstTeamId());
+        List<Integer> battingTeamPlayers = battingTeam.getTeamPlayersId();
+        firstInningBattingTeamId = battingTeam.getId();
+
+        Team bowlingTeam;
+        List<Integer> bowlingTeamPlayers;
+
+        if (battingTeam.getId() == match.getTeam1Id()) {
+            bowlingTeam = teamRepository.findTeamById(match.getTeam2Id());
+            secondInningBattingTeamId = match.getTeam2Id();
+        } else {
+            bowlingTeam = teamRepository.findTeamById(match.getTeam1Id());
+            secondInningBattingTeamId = match.getTeam1Id();
+        }
+        bowlingTeamPlayers = bowlingTeam.getTeamPlayersId();
+
+        return BattingAndBallingTeam.builder()
+                .firstInningBattingTeamId(firstInningBattingTeamId)
+                .secondInningBattingTeamId(secondInningBattingTeamId)
+                .battingTeamPlayers(battingTeamPlayers)
+                .bowlingTeamPlayers(bowlingTeamPlayers).build();
+
+    }
+
+    public List<Player> orderBuilder(List<Integer> teamPlayers, String batOrBall) {
+        List<Player> players;
+        if (Objects.equals(batOrBall, "batting")) {
+            players = playerRepository.findListOfPlayersById(teamPlayers);
+        } else {
+            players = playerRepository.findListOfBowlersById(teamPlayers);
+        }
+        return players;
+    }
+
 }
