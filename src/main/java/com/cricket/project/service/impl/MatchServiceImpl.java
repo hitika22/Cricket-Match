@@ -18,6 +18,8 @@ import java.util.Objects;
 import java.util.Random;
 
 @Service
+@Data
+@NoArgsConstructor
 @AllArgsConstructor
 public class MatchServiceImpl implements MatchService {
     @Autowired
