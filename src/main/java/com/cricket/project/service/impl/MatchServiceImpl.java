@@ -6,6 +6,7 @@ import com.cricket.project.repository.BallRepository;
 import com.cricket.project.repository.PlayerRepository;
 import com.cricket.project.repository.TeamRepository;
 import com.cricket.project.service.MatchService;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,8 +18,7 @@ import java.util.Objects;
 import java.util.Random;
 
 @Service
-@Data
-@NoArgsConstructor
+@AllArgsConstructor
 public class MatchServiceImpl implements MatchService {
     @Autowired
     private TeamServiceImpl teamService;
