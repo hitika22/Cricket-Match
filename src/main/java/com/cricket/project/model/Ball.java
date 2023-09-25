@@ -1,13 +1,11 @@
 package com.cricket.project.model;
 
-import lombok.Builder;
 import lombok.Data;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
 
 @Data
-@Builder
 @CompoundIndexes({
         @CompoundIndex(name = "match_inning_ball", def = "{'matchId': 1, 'battingTeamId': 1, 'ballId': 1}", unique = true)
 })
